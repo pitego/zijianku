@@ -1,8 +1,8 @@
-name: 🔄 Sync with Upstream
+name: 🔄 Sync with Upstream (via PR)
 
 on:
-  workflow_dispatch:    # 允许手动触发
-  schedule:             # 每天北京时间早上6点（UTC 22:00）
+  workflow_dispatch:
+  schedule:
     - cron: '0 22 * * *'
 
 jobs:
@@ -10,28 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🧾 Checkout Your Repo
+      - name: 🧾 Checkout
         uses: actions/checkout@v4
-        with:
-          persist-credentials: false
 
-      - name: ⚙️ Set Git Identity
+      - name: 🔗 Fetch Upstream
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-      - name: 🔗 Add Upstream
-        run: |
-          git remote add upstream https://github.com/Unitech/pm2.git
+          git remote add upstream https://github.com/cmliu/zijianku.git
           git fetch upstream
+          git checkout -b sync-upstream || git checkout sync-upstream
+          git merge upstream/master --allow-unrelated-histories || true
+          git push origin sync-upstream --force
 
-      - name: 🔀 Merge Upstream/master into Your master
-        run: |
-          git checkout master
-          git merge upstream/master --ff-only
-
-      - name: 🚀 Push to Your GitHub Repo
-        uses: ad-m/github-push-action@v0.8.0
+      - name: 📩 Create Pull Request
+        uses: peter-evans/create-pull-request@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: master
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: sync-upstream
+          title: "🔄 Sync with upstream master"
+          body: "自动合并来自 https://github.com/cmliu/zijianku 的更新"
+          base: master
