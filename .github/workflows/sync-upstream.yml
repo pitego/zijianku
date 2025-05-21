@@ -1,0 +1,37 @@
+name: 🔄 Sync with Upstream
+
+on:
+  workflow_dispatch:    # 允许手动触发
+  schedule:             # 每天北京时间早上6点（UTC 22:00）
+    - cron: '0 22 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧾 Checkout Your Repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: ⚙️ Set Git Identity
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: 🔗 Add Upstream
+        run: |
+          git remote add upstream https://github.com/Unitech/pm2.git
+          git fetch upstream
+
+      - name: 🔀 Merge Upstream/master into Your master
+        run: |
+          git checkout master
+          git merge upstream/master --ff-only
+
+      - name: 🚀 Push to Your GitHub Repo
+        uses: ad-m/github-push-action@v0.8.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: master
