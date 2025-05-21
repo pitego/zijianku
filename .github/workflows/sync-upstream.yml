@@ -1,33 +1,40 @@
-name: 🔄 Sync with Upstream (via PR)
+name: Upstream Sync
+
+permissions:
+  contents: write
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 22 * * *'
+    - cron: "0 0 * * *" # every day
+  workflow_dispatch:
 
 jobs:
-  sync:
+  sync_latest_from_upstream:
+    name: Sync latest commits from upstream repo
     runs-on: ubuntu-latest
+    if: ${{ github.event.repository.fork }}
 
     steps:
-      - name: 🧾 Checkout
-        uses: actions/checkout@v4
+      # Step 1: run a standard checkout action
+      - name: Checkout target repo
+        uses: actions/checkout@v3
 
-      - name: 🔗 Fetch Upstream
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git remote add upstream https://github.com/cmliu/zijianku.git
-          git fetch upstream
-          git checkout -b sync-upstream || git checkout sync-upstream
-          git merge upstream/master --allow-unrelated-histories || true
-          git push origin sync-upstream --force
-
-      - name: 📩 Create Pull Request
-        uses: peter-evans/create-pull-request@v5
+      # Step 2: run the sync action
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: sync-upstream
-          title: "🔄 Sync with upstream master"
-          body: "自动合并来自 https://github.com/cmliu/zijianku 的更新"
-          base: master
+          upstream_sync_repo: cmliu/CF-Workers-SUB
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }} # automatically generated, no need to set
+
+          # Set test_mode true to run tests instead of the true action!!
+          test_mode: false
+
+      - name: Sync check
+        if: failure()
+        run: |
+          echo "[Error] 由于上游仓库的 workflow 文件变更，导致 GitHub 自动暂停了本次自动更新，你需要手动 Sync Fork 一次，详细教程请查看项目README.md "
+          echo "[Error] Due to a change in the workflow file of the upstream repository, GitHub has automatically suspended the scheduled automatic update. You need to manually sync your fork. Please refer to the project README.md for instructions. "
+          exit 1
